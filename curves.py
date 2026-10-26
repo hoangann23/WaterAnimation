@@ -55,7 +55,7 @@ def get_selected_rig():
                 rig_group = obj
     return rig_group
 
-def get_rig_joints(rig_group):
+def get_rig_joint_root(rig_group):
     descendants = cmds.listRelatives(
         rig_group,
         fullPath=True
@@ -65,6 +65,17 @@ def get_rig_joints(rig_group):
             return transform
     cmds.warning("No joints found")
     return None
+
+def get_rig_joints(root_joint):
+    descendants = cmds.listRelatives(
+        root_joint,
+        allDescendents=True,
+        type="joint",
+        fullPath=True
+    ) or []
+    joints = descendants + [root_joint]
+    joints.reverse()
+    return joints
 
 def create_ik_spline_handle(curve, joint_chain):
     root = joint_chain
@@ -242,3 +253,43 @@ def place_on_curve(curve_transform, distance, object=None):
         cmds.refresh(force=True)
         return sphere
     return None
+
+def get_curve_bend(curve_transform, distance, sample_distance=0.5):
+    curve_length = get_curve_length(curve_transform)
+    if curve_length is None:
+        return None
+
+    distance = max(0.0, min(distance, curve_length))
+    before_distance = max(0.0, distance - sample_distance)
+    after_distance = min(curve_length, distance + sample_distance)
+
+    before = get_curve_point(curve_transform, before_distance)
+    after = get_curve_point(curve_transform, after_distance)
+
+    if before is None or after is None:
+        return None
+
+    tangent_before = before[1]
+    tangent_after = after[1]
+
+    dot = tangent_before * tangent_after
+    dot = max(-1.0, min(1.0, dot))
+
+    return math.acos(dot) #bend in radians
+
+def get_curve_length(curve_transform):
+    shapes = cmds.listRelatives(
+        curve_transform,
+        shapes=True,
+        noIntermediate=True,
+        type="nurbsCurve"
+    ) or []
+
+    if not shapes:
+        return None
+
+    selection = om.MSelectionList()
+    selection.add(shapes[0])
+    curve_fn = om.MFnNurbsCurve(selection.getDagPath(0))
+
+    return curve_fn.length()

@@ -48,6 +48,8 @@ def on_node_removed(node, modifier, client_data):
 def generate_animation(speed):
     curve = curves.get_selected_curve()
     rig_group = curves.get_selected_rig()
+    animated_rig = None
+    joints = None
 
     if curve:
         if rig_group:
@@ -55,12 +57,13 @@ def generate_animation(speed):
                                         name="animatedRaindrop_RIG_GRP", 
                                         upstreamNodes=True
                                         )[0]
-            joint_chain = curves.get_rig_joints(animated_rig)
+            joint_chain = curves.get_rig_joint_root(animated_rig)
             if joint_chain:
                 ik_spline = curves.create_ik_spline_handle(curve, joint_chain)
                 curves.drive_ik_offset(ik_spline, speed)
                 cmds.parent(ik_spline, animated_rig)
                 water = ik_spline
+                joints = curves.get_rig_joints(joint_chain)
             else:
                 water = curves.place_on_curve(curve, 1.0, animated_rig)
         else:
@@ -76,9 +79,11 @@ def generate_animation(speed):
                                                                     lambda *args: animation.move_along_curve(
                                                                         curve,
                                                                         speed,
-                                                                        water))
+                                                                        water,
+                                                                        joints))
             globals.NODE_REMOVED_JOB = [
                 om.MNodeMessage.addNodeAboutToDeleteCallback(curve_obj, on_node_removed),
                 om.MNodeMessage.addNodeAboutToDeleteCallback(curve_shape_obj, on_node_removed),
                 om.MNodeMessage.addNodeAboutToDeleteCallback(water_obj, on_node_removed)
             ]
+    return animated_rig
