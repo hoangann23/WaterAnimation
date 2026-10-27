@@ -73,10 +73,9 @@ def show_ui():
                 ik_handle = curves.get_ik_spline(rig)
                 speed = cmds.floatSliderGrp(speed_slider, query=True, value=True)
                 animation.set_ik_speed(ik_handle, speed)
-                #animation.set_distance_offset(ik_handle)
     
     speed_slider = cmds.floatSliderGrp(label="Speed", field=True, 
-                                       minValue = 0, maxValue=10, 
+                                       minValue = 0, maxValue=5, 
                                        value=globals.DEFAULT_SPEED, precision=2,
                                        dragCommand=on_speed_change, changeCommand=on_speed_change)
     stretch_slider = cmds.floatSliderGrp(label="Stretch", field=True, 
@@ -85,8 +84,14 @@ def show_ui():
                                          dragCommand=on_stretch_change, changeCommand=on_stretch_change)
     def on_click(*args):
         global rig
+        global joints
+        global ik_handle
         speed = cmds.floatSliderGrp(speed_slider, query=True, value=True)
         rig = waterGenerator.generate_animation(speed)
+        root_joint = curves.get_rig_joint_root(rig)
+        joints = curves.get_rig_joints(root_joint)
+        ik_handle = curves.get_ik_spline(rig)
+        cmds.select(rig)
 
     
     def toggle_curve_visibility(*args):
@@ -120,12 +125,7 @@ def show_ui():
         global ik_handle
 
         if ik_handle and cmds.objExists(ik_handle):
-            speed = cmds.floatSliderGrp(
-                speed_slider,
-                query=True,
-                value=True
-            )
-            animation.set_ik_speed_keyframe(ik_handle, speed)
+            animation.set_ik_speed_keyframe(ik_handle)
     
     cmds.button(label="Set Joint Keyframe", command=set_joint_keyframe)
     cmds.button(label="Set Speed Keyframe", command=set_speed_keyframe)
