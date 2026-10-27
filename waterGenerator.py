@@ -60,8 +60,12 @@ def generate_animation(speed):
             joint_chain = curves.get_rig_joint_root(animated_rig)
             if joint_chain:
                 ik_spline = curves.create_ik_spline_handle(curve, joint_chain)
-                curves.drive_ik_offset(ik_spline, speed)
                 cmds.parent(ik_spline, animated_rig)
+                ik_spline = curves.get_ik_spline(animated_rig)
+                animation.create_speed_node(ik_spline)
+                animation.create_distance_offset_node(ik_spline)
+                animation.set_ik_speed(ik_spline, speed, True)
+                animation.drive_ik_offset(ik_spline)
                 water = ik_spline
                 joints = curves.get_rig_joints(joint_chain)
             else:

@@ -3,15 +3,18 @@ import globals
 import waterGenerator
 import deformation
 import curves
+import animation
 import importlib
 
 importlib.reload(waterGenerator)
 importlib.reload(globals)
 importlib.reload(deformation)
 importlib.reload(curves)
+importlib.reload(animation)
 
-animation = None
+rig = None
 joints = None
+ik_handle = None
 
 def get_all_curves():
     curve_shapes = cmds.ls(type="nurbsCurve")
@@ -44,28 +47,46 @@ def show_ui():
     cmds.columnLayout(adjustableColumn=True, rowSpacing=8, columnAttach=("both", 10))
 
     def on_stretch_change(*args):
-            global animation
+            global rig
             global joints
-            if not animation or not cmds.objExists(animation):
-                animation = curves.get_selected_rig()
-            if animation and cmds.objExists(animation): # prioritize most recently generated animation
-                cmds.select(animation)
-                root_joint= curves.get_rig_joint_root(animation)
+            if not rig or not cmds.objExists(rig):
+                rig = curves.get_selected_rig()
+            if rig and cmds.objExists(rig): # prioritize most recently generated animation
+                cmds.select(rig)
+                root_joint= curves.get_rig_joint_root(rig)
                 if root_joint:
                     joints = curves.get_rig_joints(root_joint)
                     stretch_factor = cmds.floatSliderGrp(stretch_slider, query=True, value=True)
                     deformation.apply_stretch_factor(joints, stretch_factor)
 
+    def on_speed_change(*args):
+        global rig
+        global joints
+        global ik_handle
+        if not rig or not cmds.objExists(rig):
+            rig = curves.get_selected_rig()
+        if rig and cmds.objExists(rig): # prioritize most recently generated animation
+            cmds.select(rig)
+            root_joint= curves.get_rig_joint_root(rig)
+            if root_joint:
+                joints = curves.get_rig_joints(root_joint)
+                ik_handle = curves.get_ik_spline(rig)
+                speed = cmds.floatSliderGrp(speed_slider, query=True, value=True)
+                animation.set_ik_speed(ik_handle, speed)
+                #animation.set_distance_offset(ik_handle)
     
-    speed_slider = cmds.floatSliderGrp(label="Speed", field=True, minValue = 0, maxValue=10, value=globals.DEFAULT_SPEED, precision=2)
+    speed_slider = cmds.floatSliderGrp(label="Speed", field=True, 
+                                       minValue = 0, maxValue=10, 
+                                       value=globals.DEFAULT_SPEED, precision=2,
+                                       dragCommand=on_speed_change, changeCommand=on_speed_change)
     stretch_slider = cmds.floatSliderGrp(label="Stretch", field=True, 
                                          minValue = 0.01, maxValue=5, 
                                          value=globals.DEFAULT_MAX_STRETCH, precision=2,
                                          dragCommand=on_stretch_change, changeCommand=on_stretch_change)
     def on_click(*args):
-        global animation
+        global rig
         speed = cmds.floatSliderGrp(speed_slider, query=True, value=True)
-        animation = waterGenerator.generate_animation(speed)
+        rig = waterGenerator.generate_animation(speed)
 
     
     def toggle_curve_visibility(*args):
@@ -84,16 +105,30 @@ def show_ui():
     cmds.button(label="Toggle Joint Visibility", command=toggle_joint_visibility)
     cmds.button(label="Toggle IK Visibility", command=toggle_ik_visibility)
 
-    def set_keyframe(*args):
+    def set_joint_keyframe(*args):
         global joints
         if joints and cmds.objExists(joints[0]):
             for joint in joints:
                 cmds.setKeyframe(
                     joint,
-                    attribute=["scaleX", "scaleY", "scaleZ"]
+                    attribute=["scaleX", "scaleY", "scaleZ",
+                               "translateX", "translateY", "translateZ"]
                 )
 
-    cmds.button(label="Set Joint Keyframe", command=set_keyframe)
+    
+    def set_speed_keyframe(*args):
+        global ik_handle
 
+        if ik_handle and cmds.objExists(ik_handle):
+            speed = cmds.floatSliderGrp(
+                speed_slider,
+                query=True,
+                value=True
+            )
+            animation.set_ik_speed_keyframe(ik_handle, speed)
+    
+    cmds.button(label="Set Joint Keyframe", command=set_joint_keyframe)
+    cmds.button(label="Set Speed Keyframe", command=set_speed_keyframe)
+                
     cmds.button(label="Generate", command=on_click)
     cmds.showWindow(window)

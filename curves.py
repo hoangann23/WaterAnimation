@@ -97,28 +97,18 @@ def create_ik_spline_handle(curve, joint_chain):
     cmds.parent(curve, world=True)
     return ik_spline[0]
 
-def drive_ik_offset(ik_handle, speed):
-    time_node = "time1"
+def get_ik_spline(rig_group):
+    descendants = cmds.listRelatives(
+        rig_group,
+        allDescendents=True,
+        fullPath=True
+    ) or []
+    for transform in descendants:
+        if cmds.nodeType(transform) == "ikHandle":
+            return transform
+    cmds.warning("No ik spline found")
+    return None
 
-    multiply_node = cmds.createNode(
-        "multiplyDivide",
-        name="raindropOffset_MD"
-    )
-
-    cmds.connectAttr(
-        time_node + ".outTime",
-        multiply_node + ".input1X",
-        force=True
-    )
-
-    cmds.setAttr(multiply_node + ".input2X", speed)
-
-    cmds.connectAttr(
-        multiply_node + ".outputX",
-        ik_handle + ".offset",
-        force=True
-    )
-    
 
 def get_spline_ik_curve(rig_group):
     descendants = cmds.listRelatives(
